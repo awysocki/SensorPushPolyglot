@@ -8,9 +8,9 @@ from typing import Any, Dict, Iterable
 import udi_interface
 from udi_interface import Node
 
-from sensorpushpolyglot.config import RuntimeConfig
-from sensorpushpolyglot.nodes.sensor import SensorPushSensorNode
-from sensorpushpolyglot.sensorpush_api import SensorPushApiError, SensorPushClient
+from config import RuntimeConfig
+from nodes.sensor import SensorPushSensorNode
+from sensorpush_api import SensorPushApiError, SensorPushClient
 
 LOGGER = udi_interface.LOGGER
 
@@ -184,18 +184,18 @@ class SensorPushController(Node):
                 api_token=self._runtime_config.api_token,
             )
             LOGGER.info("Auth mode: API token (recommended/default)")
-        elif self._runtime_config.allow_legacy_userpass and has_legacy_up:
+        elif has_legacy_up:
             self._client = SensorPushClient(
                 email=self._runtime_config.email,
                 password=self._runtime_config.password,
                 api_token="",
             )
-            LOGGER.warning("Auth mode: legacy email/password fallback (explicitly enabled)")
+            LOGGER.warning("Auth mode: legacy email/password fallback")
         else:
             self._client = None
             LOGGER.warning(
-                "SensorPush API token not configured. Set sensorpush_api_token. "
-                "Legacy user/password fallback is disabled unless allow_legacy_userpass=true."
+                "SensorPush credentials not configured. Set sensorpush_password to your account token "
+                "(recommended), or provide both sensorpush_email and sensorpush_password for legacy auth."
             )
 
     def _run_poll_cycle(self, reason: str) -> None:

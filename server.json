@@ -2,7 +2,7 @@
   "name": "SensorPush Polyglot",
   "docs": "https://github.com/awysocki/SensorPushPolyglot",
   "type": "python3",
-  "executable": "sensorpushpolyglot/main.py",
+  "executable": "main.py",
   "install": "install.sh",
   "shortPoll": 60,
   "longPoll": 300,

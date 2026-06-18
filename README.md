@@ -45,10 +45,8 @@ Set credentials and behavior using PG3 custom parameters (or environment variabl
 ### Custom Parameters
 
 - `sensorpush_email`
-- `sensorpush_password`
-- `sensorpush_api_token` (optional)
-- `allow_legacy_userpass` (`true`/`false`, default: `false`)
-- `use_short_poll_updates` (`true`/`false`)
+- `sensorpush_password` (password or account token)
+- `use_short_poll_updates` (`true`/`false`, default: `false`)
 - `sample_limit` (default: `1`)
 
 In PG3 Admin, these are also published as typed fields on the configuration page so
@@ -56,9 +54,8 @@ Email/Password can be edited directly in the UI.
 
 Authentication precedence:
 
-- Default and recommended: set `sensorpush_api_token` and authenticate with token only.
-- Legacy fallback is disabled by default.
-- To allow legacy fallback, set `allow_legacy_userpass=true`, then provide `sensorpush_email` + `sensorpush_password`.
+- Default and recommended: leave `sensorpush_email` blank and set `sensorpush_password` to your account token.
+- Legacy fallback: provide both `sensorpush_email` + `sensorpush_password`.
 
 ### Environment Variables
 
@@ -75,7 +72,7 @@ Custom parameters take precedence over environment variables.
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
-python sensorpushpolyglot/main.py
+python main.py
 ```
 
 ## Repo

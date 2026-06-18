@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import udi_interface
-
-from sensorpushpolyglot.nodes.controller import SensorPushController
+from nodes.controller import SensorPushController
 
 LOGGER = udi_interface.LOGGER
 
@@ -14,31 +13,20 @@ def _register_admin_params(polyglot: udi_interface.Interface) -> None:
             {
                 "name": "sensorpush_email",
                 "title": "SensorPush Email",
-                "desc": "Legacy fallback only (not recommended): used only if legacy user/password mode is enabled.",
+                "desc": "Optional. Provide only when using legacy email/password auth. Leave blank when using an account token.",
                 "isRequired": False,
             },
             {
                 "name": "sensorpush_password",
-                "title": "SensorPush Password",
-                "desc": "Legacy fallback only (not recommended): used only if legacy user/password mode is enabled.",
-                "isRequired": False,
-            },
-            {
-                "name": "sensorpush_api_token",
-                "title": "SensorPush API Token",
-                "desc": "Recommended and default auth method: bearer token used for all cloud API requests.",
+                "title": "SensorPush Password / Account Token",
+                "desc": "Enter your account token (recommended) or your password. If Email is blank this value is used as the account token.",
                 "isRequired": True,
-            },
-            {
-                "name": "allow_legacy_userpass",
-                "title": "Allow Legacy User/Password Auth",
-                "desc": "Default false. Set true only if you intentionally want legacy email/password fallback.",
-                "isRequired": False,
             },
             {
                 "name": "use_short_poll_updates",
                 "title": "Use Short Poll Updates",
-                "desc": "Set true for 1-minute test updates; false for 5-minute production updates.",
+                "desc": "Default is false (No/0): set true for 1-minute test updates; false for 5-minute production updates.",
+                "default": "0",
                 "isRequired": False,
             },
             {
