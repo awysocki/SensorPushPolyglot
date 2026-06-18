@@ -12,14 +12,14 @@ def _register_admin_params(polyglot: udi_interface.Interface) -> None:
         [
             {
                 "name": "sensorpush_email",
-                "title": "SensorPush Email",
-                "desc": "Optional. Provide only when using legacy email/password auth. Leave blank when using an account token.",
+                "title": "SensorPush Email (Optional Fallback)",
+                "desc": "Optional. Used only if token-as-apiId is rejected by SensorPush; then authorize retries with email + token credential.",
                 "isRequired": False,
             },
             {
-                "name": "sensorpush_password",
-                "title": "SensorPush Password / Account Token",
-                "desc": "Enter your account token (recommended) or your password. If Email is blank this value is used as the account token.",
+                "name": "sensorpush_account_token",
+                "title": "SensorPush Account Token",
+                "desc": "Required long-lived account token from SensorPush dashboard.",
                 "isRequired": True,
             },
             {

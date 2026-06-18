@@ -43,6 +43,23 @@ class SensorPushController(Node):
         digest = hashlib.md5(sensor_id.encode("utf-8")).hexdigest()[:10]
         return f"{cls.SENSOR_ADDR_PREFIX}{digest}"
 
+    @staticmethod
+    def _mask(value: str, keep_start: int = 3, keep_end: int = 2) -> str:
+        text = str(value or "")
+        if not text:
+            return "<empty>"
+        if len(text) <= keep_start + keep_end:
+            return "*" * len(text)
+        return f"{text[:keep_start]}***{text[-keep_end:]}"
+
+    @staticmethod
+    def _describe_sensor(sensor_id: Any, sensor_data: Any) -> str:
+        if isinstance(sensor_data, dict):
+            name = str(sensor_data.get("name") or sensor_id)
+        else:
+            name = str(sensor_id)
+        return f"{sensor_id}:{name}"
+
     def _get_existing_nodes(self) -> Dict[str, Any]:
         nodes = getattr(self.poly, "nodes", None)
         if isinstance(nodes, dict):
@@ -130,6 +147,7 @@ class SensorPushController(Node):
             "SensorPushController started. update_mode=%s shortPoll=60s longPoll=300s",
             "short" if self._runtime_config.use_short_poll_updates else "long",
         )
+        self._run_poll_cycle("startup")
 
     def custom_params_changed(self, params: Dict[str, Any] | None = None) -> None:
         self._reload_config()
@@ -144,6 +162,7 @@ class SensorPushController(Node):
             self._typed_params_data = dict(params)
         self._reload_config()
         LOGGER.info("Custom typed params updated from PG3 Admin form")
+        self._run_poll_cycle("config_update")
 
     def _get_custom_params(self) -> Dict[str, str]:
         config = getattr(self.poly, "polyConfig", None) or {}
@@ -175,27 +194,27 @@ class SensorPushController(Node):
         custom_params = self._get_custom_params()
         self._runtime_config = RuntimeConfig.from_sources(custom_params, os.environ)
 
-        has_legacy_up = bool(self._runtime_config.email and self._runtime_config.password)
+        has_account_token = bool(self._runtime_config.account_token)
+        auth_decision = "account_token_exchange" if has_account_token else "none"
+        LOGGER.debug(
+            "Config reload: auth_decision=%s account_token_present=%s email_present=%s short_poll=%s sample_limit=%s",
+            auth_decision,
+            has_account_token,
+            bool(self._runtime_config.email),
+            self._runtime_config.use_short_poll_updates,
+            self._runtime_config.sample_limit,
+        )
 
-        if self._runtime_config.api_token:
+        if has_account_token:
             self._client = SensorPushClient(
                 email=self._runtime_config.email,
-                password=self._runtime_config.password,
-                api_token=self._runtime_config.api_token,
+                account_token=self._runtime_config.account_token,
             )
-            LOGGER.info("Auth mode: API token (recommended/default)")
-        elif has_legacy_up:
-            self._client = SensorPushClient(
-                email=self._runtime_config.email,
-                password=self._runtime_config.password,
-                api_token="",
-            )
-            LOGGER.warning("Auth mode: legacy email/password fallback")
+            LOGGER.info("Auth mode: account token -> OAuth access token exchange")
         else:
             self._client = None
             LOGGER.warning(
-                "SensorPush credentials not configured. Set sensorpush_password to your account token "
-                "(recommended), or provide both sensorpush_email and sensorpush_password for legacy auth."
+                "SensorPush account token not configured. Set sensorpush_account_token."
             )
 
     def _run_poll_cycle(self, reason: str) -> None:
@@ -204,9 +223,20 @@ class SensorPushController(Node):
             return
 
         try:
+            LOGGER.debug("Starting SensorPush poll cycle: reason=%s", reason)
             sensors_payload = self._client.list_sensors()
             sensors = sensors_payload if isinstance(sensors_payload, dict) else {}
             sensor_ids = list(sensors.keys())
+            LOGGER.debug("SensorPush sensors call complete: sensor_count=%s", len(sensor_ids))
+            sensor_descriptions = [
+                self._describe_sensor(sensor_id, sensor_data)
+                for sensor_id, sensor_data in sensors.items()
+            ]
+            LOGGER.info(
+                "SensorPush sensors returned (%s): %s",
+                len(sensor_descriptions),
+                ", ".join(sensor_descriptions) if sensor_descriptions else "<none>",
+            )
 
             samples_payload = self._client.get_samples(
                 sensor_ids=sensor_ids,
@@ -215,6 +245,7 @@ class SensorPushController(Node):
             sample_map = samples_payload.get("sensors", {}) if isinstance(samples_payload, dict) else {}
             if not isinstance(sample_map, dict):
                 sample_map = {}
+            LOGGER.debug("SensorPush samples call complete: sensor_groups=%s", len(sample_map))
 
             self._sync_sensor_nodes(sensors=sensors, sample_map=sample_map)
 

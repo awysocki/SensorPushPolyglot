@@ -8,7 +8,13 @@
   "longPoll": 300,
   "restart": true,
   "interface": "mqtt",
-  "version": "0.1.0",
+  "version": "0.1.0.1",
+  "credits": [
+    {
+      "title": "SensorPush Polyglot",
+      "version": "0.1.0.1"
+    }
+  ],
   "profile_version": "1",
   "description": "PG3 Polyglot for SensorPush cloud API with configurable short/long poll update mode.",
   "id": "sensorpushpolyglot"

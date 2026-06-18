@@ -44,23 +44,23 @@ Set credentials and behavior using PG3 custom parameters (or environment variabl
 
 ### Custom Parameters
 
-- `sensorpush_email`
-- `sensorpush_password` (password or account token)
+- `sensorpush_email` (optional fallback)
+- `sensorpush_account_token`
 - `use_short_poll_updates` (`true`/`false`, default: `false`)
 - `sample_limit` (default: `1`)
 
-In PG3 Admin, these are also published as typed fields on the configuration page so
-Email/Password can be edited directly in the UI.
+In PG3 Admin, these are also published as typed fields on the configuration page.
 
-Authentication precedence:
+Authentication mode:
 
-- Default and recommended: leave `sensorpush_email` blank and set `sensorpush_password` to your account token.
-- Legacy fallback: provide both `sensorpush_email` + `sensorpush_password`.
+- Account-token only: set `sensorpush_account_token` to your long-lived dashboard token.
+- The node server exchanges account token for OAuth access token before API calls.
+- If token-as-`apiId` authorize is rejected (`invalid user`), set `sensorpush_email` so the node server can retry authorize with `email + token`.
 
 ### Environment Variables
 
-- `SENSORPUSH_EMAIL`
-- `SENSORPUSH_PASSWORD`
+- `SENSORPUSH_EMAIL` (optional fallback)
+- `SENSORPUSH_ACCOUNT_TOKEN`
 - `SENSORPUSH_USE_SHORT_POLL_UPDATES`
 - `SENSORPUSH_SAMPLE_LIMIT`
 

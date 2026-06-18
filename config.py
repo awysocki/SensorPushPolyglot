@@ -24,8 +24,7 @@ def _as_int(value: str | int | None, default: int) -> int:
 @dataclass
 class RuntimeConfig:
     email: str = ""
-    password: str = ""
-    api_token: str = ""  # derived: set to password when no email is provided
+    account_token: str = ""
     use_short_poll_updates: bool = False
     sample_limit: int = 1
 
@@ -39,14 +38,11 @@ class RuntimeConfig:
         environ = env or {}
 
         email = str(custom.get("sensorpush_email") or environ.get("SENSORPUSH_EMAIL") or "").strip()
-        password = str(custom.get("sensorpush_password") or environ.get("SENSORPUSH_PASSWORD") or "").strip()
-
-        # If no email is provided, the password field holds the account token.
-        if not email and password:
-            api_token = password
-            password = ""
-        else:
-            api_token = ""
+        account_token = str(
+            custom.get("sensorpush_account_token")
+            or environ.get("SENSORPUSH_ACCOUNT_TOKEN")
+            or ""
+        ).strip()
 
         use_short = _as_bool(
             custom.get("use_short_poll_updates")
@@ -68,8 +64,7 @@ class RuntimeConfig:
 
         return cls(
             email=email,
-            password=password,
-            api_token=api_token,
+            account_token=account_token,
             use_short_poll_updates=use_short,
             sample_limit=sample_limit,
         )
