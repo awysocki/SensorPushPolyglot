@@ -13,4 +13,17 @@
       </accepts>
     </cmds>
   </nodeDef>
+
+  <nodeDef id="sensor" nls="sensor">
+    <sts>
+      <st id="ST" editor="onoff" />
+      <st id="GV0" editor="temperature_f" />
+      <st id="GV1" editor="humidity_pct" />
+      <st id="GV2" editor="voltage_v" />
+    </sts>
+    <cmds>
+      <sends />
+      <accepts />
+    </cmds>
+  </nodeDef>
 </nodeDefs>

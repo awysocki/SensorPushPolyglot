@@ -6,4 +6,13 @@
   <editor id="count">
     <range uom="56" min="0" max="2147483647" />
   </editor>
+  <editor id="temperature_f">
+    <range uom="17" min="-100" max="300" />
+  </editor>
+  <editor id="humidity_pct">
+    <range uom="22" min="0" max="100" prec="1" />
+  </editor>
+  <editor id="voltage_v">
+    <range uom="72" min="0" max="10" prec="3" />
+  </editor>
 </editors>

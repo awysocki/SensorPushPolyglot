@@ -1,9 +1,15 @@
 ND-controller-NAME = SensorPush Controller
 ND-controller-ICON = GenericCtl
+ND-sensor-NAME = SensorPush Sensor
+ND-sensor-ICON = GenericSensor
 
 ST-controller-ST-NAME = Cloud Connection
 ST-controller-GV0-NAME = Sensor Count
 ST-controller-GV1-NAME = Sample Count
+ST-sensor-ST-NAME = Sensor Online
+ST-sensor-GV0-NAME = Temperature (F)
+ST-sensor-GV1-NAME = Humidity (%)
+ST-sensor-GV2-NAME = Battery (V)
 
 CMD-controller-QUERY-NAME = Query
 

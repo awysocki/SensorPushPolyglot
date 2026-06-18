@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
 
 import udi_interface
 from udi_interface import Node
 
 from sensorpushpolyglot.config import RuntimeConfig
+from sensorpushpolyglot.nodes.sensor import SensorPushSensorNode
 from sensorpushpolyglot.sensorpush_api import SensorPushApiError, SensorPushClient
 
 LOGGER = udi_interface.LOGGER
@@ -15,6 +17,7 @@ LOGGER = udi_interface.LOGGER
 
 class SensorPushController(Node):
     id = "controller"
+    SENSOR_ADDR_PREFIX = "sp_"
 
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
@@ -33,6 +36,93 @@ class SensorPushController(Node):
         self._client: SensorPushClient | None = None
         self._last_poll_utc: datetime | None = None
         self._reload_config()
+
+    @classmethod
+    def _sensor_address(cls, sensor_id: str) -> str:
+        digest = hashlib.md5(sensor_id.encode("utf-8")).hexdigest()[:10]
+        return f"{cls.SENSOR_ADDR_PREFIX}{digest}"
+
+    def _get_existing_nodes(self) -> Dict[str, Any]:
+        nodes = getattr(self.poly, "nodes", None)
+        if isinstance(nodes, dict):
+            return nodes
+        return {}
+
+    def _get_node(self, address: str) -> Any | None:
+        getter = getattr(self.poly, "getNode", None)
+        if callable(getter):
+            try:
+                node = getter(address)
+                if node is not None:
+                    return node
+            except Exception:
+                pass
+        return self._get_existing_nodes().get(address)
+
+    def _delete_node(self, address: str) -> None:
+        for method_name in ("delNode", "deleteNode"):
+            deleter = getattr(self.poly, method_name, None)
+            if callable(deleter):
+                deleter(address)
+                return
+        raise RuntimeError("No node deletion method available on polyglot interface")
+
+    def _coerce_float(self, value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _sync_sensor_nodes(self, sensors: Dict[str, Any], sample_map: Dict[str, Any]) -> None:
+        active_addresses: set[str] = set()
+
+        for sensor_id, sensor_data in sensors.items():
+            address = self._sensor_address(str(sensor_id))
+            active_addresses.add(address)
+
+            sensor_name = str(sensor_id)
+            if isinstance(sensor_data, dict):
+                sensor_name = str(sensor_data.get("name") or sensor_id)
+
+            node = self._get_node(address)
+            if not isinstance(node, SensorPushSensorNode):
+                node = SensorPushSensorNode(self.poly, address=address, name=sensor_name, primary=self.address)
+                self.poly.addNode(node)
+                LOGGER.info("Created child sensor node: %s (%s)", sensor_name, address)
+
+            latest_sample: Dict[str, Any] = {}
+            samples = sample_map.get(sensor_id)
+            if isinstance(samples, list) and samples:
+                first = samples[0]
+                if isinstance(first, dict):
+                    latest_sample = first
+
+            battery_v = None
+            if isinstance(sensor_data, dict):
+                battery_v = self._coerce_float(sensor_data.get("battery_voltage"))
+
+            node.set_metrics(
+                connected=True,
+                temperature_f=self._coerce_float(latest_sample.get("temperature")),
+                humidity_pct=self._coerce_float(latest_sample.get("humidity")),
+                battery_v=battery_v,
+            )
+
+        existing_sensor_addresses = {
+            address
+            for address, _ in self._get_existing_nodes().items()
+            if isinstance(address, str) and address.startswith(self.SENSOR_ADDR_PREFIX)
+        }
+        stale_addresses = sorted(existing_sensor_addresses - active_addresses)
+
+        for address in stale_addresses:
+            try:
+                self._delete_node(address)
+                LOGGER.info("Deleted stale child sensor node: %s", address)
+            except Exception:
+                LOGGER.exception("Failed deleting stale child sensor node: %s", address)
 
     def start(self) -> None:
         LOGGER.info(
@@ -86,6 +176,10 @@ class SensorPushController(Node):
                 limit=self._runtime_config.sample_limit,
             )
             sample_map = samples_payload.get("sensors", {}) if isinstance(samples_payload, dict) else {}
+            if not isinstance(sample_map, dict):
+                sample_map = {}
+
+            self._sync_sensor_nodes(sensors=sensors, sample_map=sample_map)
 
             total_samples = 0
             if isinstance(sample_map, dict):
