@@ -26,6 +26,7 @@ class RuntimeConfig:
     email: str = ""
     password: str = ""
     api_token: str = ""
+    allow_legacy_userpass: bool = False
     use_short_poll_updates: bool = False
     sample_limit: int = 1
 
@@ -41,6 +42,12 @@ class RuntimeConfig:
         email = str(custom.get("sensorpush_email") or environ.get("SENSORPUSH_EMAIL") or "").strip()
         password = str(custom.get("sensorpush_password") or environ.get("SENSORPUSH_PASSWORD") or "").strip()
         api_token = str(custom.get("sensorpush_api_token") or environ.get("SENSORPUSH_API_TOKEN") or "").strip()
+        allow_legacy_userpass = _as_bool(
+            custom.get("allow_legacy_userpass")
+            if "allow_legacy_userpass" in custom
+            else environ.get("SENSORPUSH_ALLOW_LEGACY_USERPASS"),
+            default=False,
+        )
         use_short = _as_bool(
             custom.get("use_short_poll_updates")
             if "use_short_poll_updates" in custom
@@ -63,6 +70,7 @@ class RuntimeConfig:
             email=email,
             password=password,
             api_token=api_token,
+            allow_legacy_userpass=allow_legacy_userpass,
             use_short_poll_updates=use_short,
             sample_limit=sample_limit,
         )

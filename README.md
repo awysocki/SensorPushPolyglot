@@ -47,6 +47,7 @@ Set credentials and behavior using PG3 custom parameters (or environment variabl
 - `sensorpush_email`
 - `sensorpush_password`
 - `sensorpush_api_token` (optional)
+- `allow_legacy_userpass` (`true`/`false`, default: `false`)
 - `use_short_poll_updates` (`true`/`false`)
 - `sample_limit` (default: `1`)
 
@@ -55,8 +56,9 @@ Email/Password can be edited directly in the UI.
 
 Authentication precedence:
 
-- Preferred: set `sensorpush_api_token` and authenticate with token only.
-- Fallback: use `sensorpush_email` + `sensorpush_password` only when no token is configured.
+- Default and recommended: set `sensorpush_api_token` and authenticate with token only.
+- Legacy fallback is disabled by default.
+- To allow legacy fallback, set `allow_legacy_userpass=true`, then provide `sensorpush_email` + `sensorpush_password`.
 
 ### Environment Variables
 

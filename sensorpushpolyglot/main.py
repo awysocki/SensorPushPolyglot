@@ -14,19 +14,25 @@ def _register_admin_params(polyglot: udi_interface.Interface) -> None:
             {
                 "name": "sensorpush_email",
                 "title": "SensorPush Email",
-                "desc": "Fallback only: email used when API token is not provided.",
+                "desc": "Legacy fallback only (not recommended): used only if legacy user/password mode is enabled.",
                 "isRequired": False,
             },
             {
                 "name": "sensorpush_password",
                 "title": "SensorPush Password",
-                "desc": "Fallback only: password used when API token is not provided.",
+                "desc": "Legacy fallback only (not recommended): used only if legacy user/password mode is enabled.",
                 "isRequired": False,
             },
             {
                 "name": "sensorpush_api_token",
                 "title": "SensorPush API Token",
-                "desc": "Recommended auth method: bearer token used first when present.",
+                "desc": "Recommended and default auth method: bearer token used for all cloud API requests.",
+                "isRequired": True,
+            },
+            {
+                "name": "allow_legacy_userpass",
+                "title": "Allow Legacy User/Password Auth",
+                "desc": "Default false. Set true only if you intentionally want legacy email/password fallback.",
                 "isRequired": False,
             },
             {
