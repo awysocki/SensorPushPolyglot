@@ -1,0 +1,11 @@
+ND-controller-NAME = SensorPush Controller
+ND-controller-ICON = GenericCtl
+
+ST-controller-ST-NAME = Cloud Connection
+ST-controller-GV0-NAME = Sensor Count
+ST-controller-GV1-NAME = Sample Count
+
+CMD-controller-QUERY-NAME = Query
+
+onoff-0 = Disconnected
+onoff-1 = Connected

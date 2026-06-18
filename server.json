@@ -1,0 +1,15 @@
+{
+  "name": "SensorPush Polyglot",
+  "docs": "https://github.com/awysocki/SensorPushPolyglot",
+  "type": "python3",
+  "executable": "sensorpushpolyglot/main.py",
+  "install": "install.sh",
+  "shortPoll": 60,
+  "longPoll": 300,
+  "restart": true,
+  "interface": "mqtt",
+  "version": "0.1.0",
+  "profile_version": "1",
+  "description": "PG3 Polyglot for SensorPush cloud API with configurable short/long poll update mode.",
+  "id": "sensorpushpolyglot"
+}

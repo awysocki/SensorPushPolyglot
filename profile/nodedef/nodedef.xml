@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nodeDefs>
+  <nodeDef id="controller" nls="ctl">
+    <sts>
+      <st id="ST" editor="onoff" />
+      <st id="GV0" editor="count" />
+      <st id="GV1" editor="count" />
+    </sts>
+    <cmds>
+      <sends />
+      <accepts>
+        <cmd id="QUERY" />
+      </accepts>
+    </cmds>
+  </nodeDef>
+</nodeDefs>
