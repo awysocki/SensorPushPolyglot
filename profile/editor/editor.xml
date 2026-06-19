@@ -15,4 +15,7 @@
   <editor id="voltage_v">
     <range uom="72" min="0" max="10" prec="3" />
   </editor>
+  <editor id="sensor_type_index">
+    <range uom="25" min="0" max="10" nls="sensor_type_index" />
+  </editor>
 </editors>

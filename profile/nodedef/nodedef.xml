@@ -23,7 +23,7 @@
       <st id="GV3" editor="count" />
       <st id="GV4" editor="temperature_f" />
       <st id="GV5" editor="count" />
-      <st id="GV6" editor="temperature_f" />
+      <st id="GV6" editor="sensor_type_index" />
     </sts>
     <cmds>
       <sends />
