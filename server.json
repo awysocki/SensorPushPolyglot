@@ -8,11 +8,11 @@
   "longPoll": 300,
   "restart": true,
   "interface": "mqtt",
-  "version": "0.1.0.7",
+  "version": "0.1.0.10",
   "credits": [
     {
       "title": "SensorPush Polyglot",
-      "version": "0.1.0.7"
+      "version": "0.1.0.10"
     }
   ],
   "profile_version": "1",

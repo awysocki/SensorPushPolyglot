@@ -41,6 +41,8 @@ class SensorPushController(Node):
         self._last_poll_utc: datetime | None = None
         self._last_config_refresh_utc: datetime | None = None
         self._poll_cycle_seq: int = 0
+        self._missing_token_warned: bool = False
+        self._initial_discovery_completed: bool = False
         self._typed_params_data: Dict[str, Any] = {}
         self._reload_config()
 
@@ -122,6 +124,26 @@ class SensorPushController(Node):
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    @staticmethod
+    def _as_bool(value: Any) -> bool:
+        return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+    @staticmethod
+    def _json_preview(payload: Any, limit: int = 8000) -> str:
+        try:
+            text = json.dumps(payload, sort_keys=True, default=str)
+        except Exception:
+            text = repr(payload)
+        if len(text) > limit:
+            return f"{text[:limit]}...<truncated>"
+        return text
+
+    def _is_moredebug_enabled(self) -> bool:
+        params = self._get_custom_params()
+        params_ci = {str(k).strip().lower(): v for k, v in params.items()}
+        raw = params_ci.get("moredebug") or params_ci.get("sensorpush_moredebug")
+        return self._as_bool(raw)
 
     def _extract_float(self, payload: Any, keys: tuple[str, ...]) -> float | None:
         if isinstance(payload, dict):
@@ -314,6 +336,11 @@ class SensorPushController(Node):
         mqtt_logger = logging.getLogger("udi_interface.interface")
         verbose = str(custom_params.get("verbose_mqtt_logging") or "0").lower() in ("1", "true")
         mqtt_logger.setLevel(logging.INFO if verbose else logging.WARNING)
+        # PG3 sends customparams before customtypeddata during startup. Defer poll refresh
+        # until typed params are available to avoid a transient "missing token" warning.
+        if self._client is None and not self._runtime_config.account_token:
+            LOGGER.debug("Deferring config refresh from custom_params_changed until typed params load")
+            return
         self._run_config_refresh_once("custom_params_changed")
 
     def custom_typed_data_changed(self, params: Dict[str, Any] | None = None) -> None:
@@ -376,15 +403,17 @@ class SensorPushController(Node):
                 email=self._runtime_config.email,
                 account_token=self._runtime_config.account_token,
             )
+            self._missing_token_warned = False
             LOGGER.debug("Auth mode: account token -> OAuth access token exchange")
         else:
             self._client = None
-            LOGGER.warning(
-                "SensorPush account token not configured. Set sensorpush_account_token."
-            )
+            LOGGER.debug("SensorPush account token not configured yet")
 
     def _run_poll_cycle(self, reason: str, discover_nodes: bool) -> None:
         if not self._client:
+            if not self._missing_token_warned:
+                LOGGER.warning("SensorPush account token not configured. Set sensorpush_account_token.")
+                self._missing_token_warned = True
             self.setDriver("ST", 0)
             return
 
@@ -419,10 +448,32 @@ class SensorPushController(Node):
             if not isinstance(sample_map, dict):
                 sample_map = {}
 
+            if self._is_moredebug_enabled():
+                LOGGER.info("MOREDEBUG SensorPush /devices/sensors payload: %s", self._json_preview(sensors_payload))
+                LOGGER.info("MOREDEBUG SensorPush /samples payload: %s", self._json_preview(samples_payload))
+
+            effective_discover_nodes = discover_nodes
+            if not discover_nodes:
+                if not self._initial_discovery_completed:
+                    existing_sensor_nodes = [
+                        addr
+                        for addr in self._get_existing_nodes().keys()
+                        if isinstance(addr, str) and addr.startswith(self.SENSOR_ADDR_PREFIX)
+                    ]
+                    if not existing_sensor_nodes and sensor_ids:
+                        effective_discover_nodes = True
+                        LOGGER.info(
+                            "No child sensor nodes found during update-only poll; running one-time discovery (reason=%s)",
+                            reason,
+                        )
+
+            if effective_discover_nodes:
+                self._initial_discovery_completed = True
+
             self._sync_sensor_nodes(
                 sensors=sensors,
                 sample_map=sample_map,
-                discover_nodes=discover_nodes,
+                discover_nodes=effective_discover_nodes,
                 reason=reason,
             )
 
@@ -444,7 +495,7 @@ class SensorPushController(Node):
                 cycle_id,
                 len(sensor_ids),
                 total_samples,
-                discover_nodes,
+                effective_discover_nodes,
                 self._server_version,
             )
         except SensorPushApiError as err:
