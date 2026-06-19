@@ -23,11 +23,21 @@ def _dedupe_logger_handlers(logger: logging.Logger) -> None:
         else:
             seen.add(key)
 
+    # If this logger has its own handlers, avoid duplicate emission via parents.
+    if logger.handlers:
+        logger.propagate = False
+
 
 def _dedupe_all_loggers() -> None:
     _dedupe_logger_handlers(logging.getLogger())
     _dedupe_logger_handlers(logging.getLogger("udi_interface"))
     _dedupe_logger_handlers(LOGGER)
+
+    # udi_interface defines multiple child loggers; de-dupe each one explicitly.
+    manager = logging.root.manager
+    for name, obj in manager.loggerDict.items():
+        if name.startswith("udi_interface") and isinstance(obj, logging.Logger):
+            _dedupe_logger_handlers(obj)
 
 
 def _register_admin_params(polyglot: udi_interface.Interface) -> None:
