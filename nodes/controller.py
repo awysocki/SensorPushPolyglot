@@ -122,7 +122,7 @@ class SensorPushController(Node):
         self._startup_stored_sensor_addresses = self._load_stored_sensor_addresses()
         if stored_signature and stored_signature != current_signature:
             LOGGER.info(
-                "SensorPush account changed since last start; will purge old sensor nodes after startup discovery (previous=%s current=%s)",
+                "SensorPush account changed since last start; will purge attached old sensor nodes after startup discovery (previous=%s current=%s)",
                 self._mask(stored_signature),
                 self._mask(current_signature),
             )
@@ -148,14 +148,34 @@ class SensorPushController(Node):
             if isinstance(address, str) and address.startswith(self.SENSOR_ADDR_PREFIX) and address not in active_addresses
         ]
         if not stale_addresses:
+            self._startup_stored_sensor_addresses = []
+            return
+
+        attached_addresses = {
+            address
+            for address in self._get_existing_nodes().keys()
+            if isinstance(address, str) and address.startswith(self.SENSOR_ADDR_PREFIX)
+        }
+        purge_candidates = sorted(address for address in stale_addresses if address in attached_addresses)
+        skipped_unattached = sorted(address for address in stale_addresses if address not in attached_addresses)
+
+        if skipped_unattached:
+            LOGGER.info(
+                "Startup orphan cleanup skipped unattached sensor nodes (%s): %s",
+                len(skipped_unattached),
+                ", ".join(skipped_unattached),
+            )
+
+        if not purge_candidates:
+            self._startup_stored_sensor_addresses = []
             return
 
         LOGGER.info(
-            "Purging stale sensor nodes after startup discovery (%s): %s",
-            len(stale_addresses),
-            ", ".join(stale_addresses),
+            "Purging stale attached sensor nodes after startup discovery (%s): %s",
+            len(purge_candidates),
+            ", ".join(purge_candidates),
         )
-        self._delete_all_sensor_nodes(stale_addresses)
+        self._delete_all_sensor_nodes(purge_candidates)
         self._startup_stored_sensor_addresses = []
 
     def _run_config_refresh_once(self, source: str) -> None:
@@ -471,15 +491,9 @@ class SensorPushController(Node):
                     self._custom_params_data[str(key)] = value
             auth_changed = self._reload_config_with_auth_change()
             LOGGER.debug(
-                "Custom params updated. update_mode=%s sample_limit=%s",
+                "Custom params updated. update_mode=%s",
                 "short" if self._runtime_config.use_short_poll_updates else "long",
-                self._runtime_config.sample_limit,
             )
-            # Update MQTT logger level if verbose_mqtt_logging param changed
-            custom_params = self._get_custom_params()
-            mqtt_logger = logging.getLogger("udi_interface.interface")
-            verbose = str(custom_params.get("verbose_mqtt_logging") or "0").lower() in ("1", "true")
-            mqtt_logger.setLevel(logging.INFO if verbose else logging.WARNING)
             self._run_startup_sync_if_pending("custom_params_changed")
             if not auth_changed:
                 LOGGER.debug("Ignoring custom params change; auth credentials unchanged")
@@ -567,12 +581,11 @@ class SensorPushController(Node):
         has_account_token = bool(self._runtime_config.account_token)
         auth_decision = "account_token_exchange" if has_account_token else "none"
         LOGGER.debug(
-            "Config reload: auth_decision=%s account_token_present=%s email_present=%s short_poll=%s sample_limit=%s",
+            "Config reload: auth_decision=%s account_token_present=%s email_present=%s short_poll=%s",
             auth_decision,
             has_account_token,
             bool(self._runtime_config.email),
             self._runtime_config.use_short_poll_updates,
-            self._runtime_config.sample_limit,
         )
 
         if has_account_token:
@@ -641,7 +654,7 @@ class SensorPushController(Node):
 
             samples_payload = self._client.get_samples(
                 sensor_ids=sensor_ids,
-                limit=self._runtime_config.sample_limit,
+                limit=1,
             )
             sample_map = samples_payload.get("sensors", {}) if isinstance(samples_payload, dict) else {}
             if not isinstance(sample_map, dict):

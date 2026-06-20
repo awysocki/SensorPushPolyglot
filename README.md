@@ -47,8 +47,6 @@ Set credentials and behavior using PG3 custom parameters (or environment variabl
 - `sensorpush_email` (optional fallback)
 - `sensorpush_account_token`
 - `use_short_poll_updates` (`true`/`false`, default: `false`)
-- `sample_limit` (default: `1`)
-- `verbose_mqtt_logging` (`true`/`false`, default: `false`) — set to `true` to see all MQTT driver update messages for troubleshooting
 
 In PG3 Admin, these are also published as typed fields on the configuration page.
 
@@ -63,8 +61,6 @@ Authentication mode:
 - `SENSORPUSH_EMAIL` (optional fallback)
 - `SENSORPUSH_ACCOUNT_TOKEN`
 - `SENSORPUSH_USE_SHORT_POLL_UPDATES`
-- `SENSORPUSH_SAMPLE_LIMIT`
-- `SENSORPUSH_VERBOSE_MQTT_LOGGING`
 
 Custom parameters take precedence over environment variables.
 

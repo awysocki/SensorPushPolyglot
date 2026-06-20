@@ -41,7 +41,7 @@ def _dedupe_all_loggers() -> None:
 
 
 def _set_mqtt_logger_silent() -> None:
-    """Suppress MQTT driver update messages at startup; controller will update based on config."""
+    """Keep MQTT driver update messages suppressed by default."""
     logging.getLogger("udi_interface.interface").setLevel(logging.WARNING)
 
 
@@ -65,19 +65,6 @@ def _register_admin_params(polyglot: udi_interface.Interface) -> None:
                 "name": "use_short_poll_updates",
                 "title": "Use Short Poll Updates",
                 "desc": "Default is false (No/0): set true for 1-minute test updates; false for 5-minute production updates.",
-                "default": "0",
-                "isRequired": False,
-            },
-            {
-                "name": "sample_limit",
-                "title": "Sample Limit",
-                "desc": "Number of samples to request per sensor each poll (1-100).",
-                "isRequired": False,
-            },
-            {
-                "name": "verbose_mqtt_logging",
-                "title": "Verbose MQTT Logging",
-                "desc": "Default is false (No/0): set true to show all MQTT driver update messages for troubleshooting.",
                 "default": "0",
                 "isRequired": False,
             },
