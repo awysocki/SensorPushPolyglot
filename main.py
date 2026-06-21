@@ -51,15 +51,17 @@ def _register_admin_params(polyglot: udi_interface.Interface) -> None:
         [
             {
                 "name": "sensorpush_email",
-                "title": "SensorPush Email (Optional Fallback)",
-                "desc": "Optional. Used only if token-as-apiId is rejected by SensorPush; then authorize retries with email + token credential.",
-                "isRequired": False,
+                "title": "SensorPush Email",
+                "desc": "Required SensorPush account email.",
+                "isRequired": True,
+                "isDelete": True,
             },
             {
-                "name": "sensorpush_account_token",
-                "title": "SensorPush Account Token",
-                "desc": "Required long-lived account token from SensorPush dashboard.",
+                "name": "sensorpush_password",
+                "title": "SensorPush Password",
+                "desc": "Required SensorPush account password.",
                 "isRequired": True,
+                "isDelete": True,
             },
             {
                 "name": "use_short_poll_updates",
@@ -67,6 +69,7 @@ def _register_admin_params(polyglot: udi_interface.Interface) -> None:
                 "desc": "Default is false (No/0): set true for 1-minute test updates; false for 5-minute production updates.",
                 "default": "0",
                 "isRequired": False,
+                "isDelete": True,
             },
         ],
         True,

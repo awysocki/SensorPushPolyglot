@@ -622,7 +622,7 @@ class SensorPushController(Node):
     def _run_poll_cycle_locked(self, reason: str, discover_nodes: bool) -> None:
         if not self._client:
             if not self._missing_token_warned:
-                LOGGER.warning("SensorPush account token not configured. Set sensorpush_account_token.")
+                LOGGER.warning("SensorPush password not configured. Set sensorpush_password.")
                 self._missing_token_warned = True
             self._consecutive_poll_failures = 0
             self.setDriver("ST", 0)

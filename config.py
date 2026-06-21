@@ -29,7 +29,9 @@ class RuntimeConfig:
 
         email = str(custom.get("sensorpush_email") or environ.get("SENSORPUSH_EMAIL") or "").strip()
         account_token = str(
-            custom.get("sensorpush_account_token")
+            custom.get("sensorpush_password")
+            or custom.get("sensorpush_account_token")
+            or environ.get("SENSORPUSH_PASSWORD")
             or environ.get("SENSORPUSH_ACCOUNT_TOKEN")
             or ""
         ).strip()
