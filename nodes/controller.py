@@ -77,8 +77,9 @@ class SensorPushController(Node):
         profile_num = str(profile_num_value)
         instance_token = hashlib.md5(profile_num.encode("utf-8")).hexdigest()[:2]
         controller_address = f"ctrl_{instance_token}"
+        controller_name = f"SensorPush ({profile_num})" if profile_num_value > 0 else "SensorPush"
 
-        super().__init__(polyglot, controller_address, controller_address, "SensorPush Controller")
+        super().__init__(polyglot, controller_address, controller_address, controller_name)
         self.poly = polyglot
         self._instance_token = instance_token
         self._sensor_addr_prefix = f"s{instance_token}_"
