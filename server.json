@@ -8,11 +8,11 @@
   "longPoll": 300,
   "restart": true,
   "interface": "mqtt",
-  "version": "2026.7.034",
+  "version": "2026.7.043",
   "discover": true,
   "oauth": false,
-  "status_node": "controller",
-  "status_driver": "ST",
+  "status_node": null,
+  "status_driver": null,
   "customtypedparams": [
     {
       "name": "sensorpush_email",
@@ -72,7 +72,7 @@
   "credits": [
     {
       "title": "SensorPush",
-      "version": "2026.7.034"
+      "version": "2026.7.043"
     }
   ],
   "profile_version": "9",

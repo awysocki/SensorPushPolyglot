@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import math
@@ -21,8 +22,6 @@ LOGGER = udi_interface.LOGGER
 
 class SensorPushController(Node):
     id = "controller"
-    SENSOR_ADDR_PREFIX = "sp_"
-    GATEWAY_ADDR_PREFIX = "gw_"
     PARAM_NOTICE_KEY = "sensorpush_required_params"
     TYPED_PARAM_SCHEMA = [
         {"name": "sensorpush_email", "title": "SensorPush Email", "desc": "Required SensorPush account email.", "isRequired": True},
@@ -47,9 +46,43 @@ class SensorPushController(Node):
         "QUERY": "query",
     }
 
+    @staticmethod
+    def _resolve_profile_num(polyglot: Any) -> int:
+        config = getattr(polyglot, "polyConfig", None) or {}
+        raw_profile = config.get("profileNum")
+        try:
+            if raw_profile is not None:
+                parsed = int(raw_profile)
+                if parsed > 0:
+                    return parsed
+        except (TypeError, ValueError):
+            pass
+
+        pg3init = os.environ.get("PG3INIT", "")
+        if pg3init:
+            try:
+                decoded = base64.b64decode(pg3init).decode("utf-8", errors="ignore")
+                parsed_json = json.loads(decoded)
+                raw_profile = parsed_json.get("profileNum")
+                parsed = int(raw_profile)
+                if parsed > 0:
+                    return parsed
+            except Exception:
+                pass
+
+        return 0
+
     def __init__(self, polyglot: Any) -> None:
-        super().__init__(polyglot, "controller", "controller", "SensorPush Controller")
+        profile_num_value = self._resolve_profile_num(polyglot)
+        profile_num = str(profile_num_value)
+        instance_token = hashlib.md5(profile_num.encode("utf-8")).hexdigest()[:2]
+        controller_address = f"ctrl_{instance_token}"
+
+        super().__init__(polyglot, controller_address, controller_address, "SensorPush Controller")
         self.poly = polyglot
+        self._instance_token = instance_token
+        self._sensor_addr_prefix = f"s{instance_token}_"
+        self._gateway_addr_prefix = f"g{instance_token}_"
         self._runtime_config = RuntimeConfig()
         self._client: SensorPushClient | None = None
         self._last_poll_utc: datetime | None = None
@@ -62,6 +95,14 @@ class SensorPushController(Node):
         # Publish typed parameter schema so PG3 consistently renders the admin fields.
         self.typed_params = udi_interface.Custom(self.poly, "customtypedparams")
         self.typed_params.load(self.TYPED_PARAM_SCHEMA, True)
+
+        LOGGER.info(
+            "Address namespace initialized: profileNum=%s controller=%s sensor_prefix=%s gateway_prefix=%s",
+            profile_num,
+            controller_address,
+            self._sensor_addr_prefix,
+            self._gateway_addr_prefix,
+        )
 
         self._reload_config()
 
@@ -168,21 +209,18 @@ class SensorPushController(Node):
         if not email or not account_token:
             message = "Set required custom params: sensorpush_email, sensorpush_password."
             self._set_notice(message)
-            self.setDriver("ST", 0)
             return False
 
         self._clear_notice()
         return True
 
-    @classmethod
-    def _sensor_address(cls, sensor_id: str) -> str:
-        digest = hashlib.md5(sensor_id.encode("utf-8")).hexdigest()[:10]
-        return f"{cls.SENSOR_ADDR_PREFIX}{digest}"
+    def _sensor_address(self, sensor_id: str) -> str:
+        digest = hashlib.md5(f"{self._instance_token}:{sensor_id}".encode("utf-8")).hexdigest()[:10]
+        return f"{self._sensor_addr_prefix}{digest}"
 
-    @classmethod
-    def _gateway_address(cls, gateway_id: str) -> str:
-        digest = hashlib.md5(gateway_id.encode("utf-8")).hexdigest()[:10]
-        return f"{cls.GATEWAY_ADDR_PREFIX}{digest}"
+    def _gateway_address(self, gateway_id: str) -> str:
+        digest = hashlib.md5(f"{self._instance_token}:{gateway_id}".encode("utf-8")).hexdigest()[:10]
+        return f"{self._gateway_addr_prefix}{digest}"
 
     def _get_existing_nodes(self) -> Dict[str, Any]:
         nodes = getattr(self.poly, "nodes", None)
@@ -486,7 +524,7 @@ class SensorPushController(Node):
         existing_sensor_addresses = {
             address
             for address, _ in self._get_existing_nodes().items()
-            if isinstance(address, str) and address.startswith(self.SENSOR_ADDR_PREFIX)
+            if isinstance(address, str) and address.startswith(self._sensor_addr_prefix)
         }
         stale_addresses = sorted(existing_sensor_addresses - active_addresses)
         for address in stale_addresses:
@@ -509,7 +547,7 @@ class SensorPushController(Node):
             existing_gateway_addresses = {
                 address
                 for address, _ in self._get_existing_nodes().items()
-                if isinstance(address, str) and address.startswith(self.GATEWAY_ADDR_PREFIX)
+                if isinstance(address, str) and address.startswith(self._gateway_addr_prefix)
             }
             for address in sorted(existing_gateway_addresses):
                 try:
@@ -546,7 +584,7 @@ class SensorPushController(Node):
         existing_gateway_addresses = {
             address
             for address, _ in self._get_existing_nodes().items()
-            if isinstance(address, str) and address.startswith(self.GATEWAY_ADDR_PREFIX)
+            if isinstance(address, str) and address.startswith(self._gateway_addr_prefix)
         }
         stale_addresses = sorted(existing_gateway_addresses - active_addresses)
         for address in stale_addresses:
@@ -671,13 +709,35 @@ class SensorPushController(Node):
             LOGGER.info("Auth mode: account token -> OAuth access token exchange")
         else:
             self._client = None
-            LOGGER.warning("SensorPush account token not configured. Set sensorpush_password.")
+            LOGGER.debug("SensorPush account token not configured yet; waiting for custom typed params.")
+
+    def _register_connection_status_node(self) -> None:
+        setter = getattr(self.poly, "setController", None)
+        if not callable(setter):
+            return
+
+        # PG3/udi_interface signatures differ across versions; try common forms.
+        for args in ((self.address, "ST"), (self.address,)):
+            try:
+                setter(*args)
+                LOGGER.info(
+                    "Registered connection status mapping: controller=%s driver=%s",
+                    self.address,
+                    "ST",
+                )
+                return
+            except TypeError:
+                continue
+            except Exception:
+                LOGGER.debug("setController call failed for args=%s", args, exc_info=True)
+                return
 
     def start(self, command: Dict[str, Any] | None = None) -> None:
         LOGGER.info(
             "SensorPushController started. update_mode=%s shortPoll=60s longPoll=300s",
             "short" if self._runtime_config.use_short_poll_updates else "long",
         )
+        self._register_connection_status_node()
         if not self._ensure_required_params():
             return
 
@@ -729,7 +789,7 @@ class SensorPushController(Node):
 
     def _run_poll_cycle(self, reason: str) -> None:
         if not self._client:
-            self.setDriver("ST", 0)
+            LOGGER.debug("Skipping poll cycle '%s' until credentials are available", reason)
             return
 
         try:
