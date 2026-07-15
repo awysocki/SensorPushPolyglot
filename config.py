@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Mapping
 
 
@@ -32,6 +32,12 @@ def _as_float(value: str | float | int | None, default: float, minimum: float = 
     return max(parsed, minimum)
 
 
+def _as_csv_set(value: str | None) -> set[str]:
+    if value is None:
+        return set()
+    return {item.strip().lower() for item in str(value).split(",") if item.strip()}
+
+
 @dataclass
 class RuntimeConfig:
     email: str = ""
@@ -43,6 +49,7 @@ class RuntimeConfig:
     ntfy_server: str = "https://ntfy.sh"
     ntfy_token: str = ""
     sensor_offline_notify_recovery: bool = True
+    sensor_ntfy_ignore_list: set[str] = field(default_factory=set)
 
     @classmethod
     def from_sources(
@@ -98,6 +105,11 @@ class RuntimeConfig:
             else environ.get("SENSOR_OFFLINE_NOTIFY_RECOVERY"),
             default=True,
         )
+        sensor_ntfy_ignore_list = _as_csv_set(
+            custom.get("sensor_ntfy_ignore_list")
+            if "sensor_ntfy_ignore_list" in custom
+            else environ.get("SENSOR_NTFY_IGNORE_LIST")
+        )
 
         return cls(
             email=email,
@@ -109,4 +121,5 @@ class RuntimeConfig:
             ntfy_server=ntfy_server,
             ntfy_token=ntfy_token,
             sensor_offline_notify_recovery=sensor_offline_notify_recovery,
+            sensor_ntfy_ignore_list=sensor_ntfy_ignore_list,
         )

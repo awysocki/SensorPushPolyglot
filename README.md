@@ -75,6 +75,7 @@ Set credentials and behavior using PG3 custom parameters (or environment variabl
 - `fetch_limit` (default: `1`)
 - `sensor_offline_hours` (default: `1`)
 - `sensor_offline_notify_recovery` (`true`/`false`, default: `true`)
+- `sensor_ntfy_ignore_list` (comma-separated sensor names/IDs to suppress online/offline ntfy alerts)
 - `ntfy_topic` (default: ``)
 - `ntfy_server` (optional, default: `https://ntfy.sh`)
 - `ntfy_token` (optional bearer token for private ntfy topics)
@@ -95,6 +96,7 @@ Authentication mode:
 - `FETCH_LIMIT`
 - `SENSOR_OFFLINE_HOURS`
 - `SENSOR_OFFLINE_NOTIFY_RECOVERY`
+- `SENSOR_NTFY_IGNORE_LIST`
 - `NTFY_TOPIC`
 - `NTFY_SERVER`
 - `NTFY_TOKEN`

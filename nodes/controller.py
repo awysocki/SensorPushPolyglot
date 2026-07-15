@@ -36,6 +36,7 @@ class SensorPushController(Node):
         {"name": "fetch_limit", "title": "Fetch Limit", "desc": "How many recent samples to request per sensor (default 1).", "isRequired": False, "defaultValue": "1"},
         {"name": "sensor_offline_hours", "title": "Sensor Offline Hours", "desc": "Alert when no fresh sample is seen for this many hours (default 1).", "isRequired": False, "defaultValue": "1"},
         {"name": "sensor_offline_notify_recovery", "title": "Notify On Recovery", "desc": "Send ntfy when an offline sensor starts reporting again (default 1).", "isRequired": False, "defaultValue": "1"},
+        {"name": "sensor_ntfy_ignore_list", "title": "Sensor ntfy Ignore List", "desc": "Comma-separated sensor names to ignore for ntfy online/offline alerts.", "isRequired": False, "defaultValue": ""},
         {"name": "ntfy_topic", "title": "ntfy Topic", "desc": "Optional: set to enable push notifications via ntfy.", "isRequired": False, "defaultValue": ""},
         {"name": "ntfy_server", "title": "ntfy Server URL", "desc": "Optional: ntfy server URL.", "isRequired": False, "defaultValue": "https://ntfy.sh"},
         {"name": "ntfy_token", "title": "ntfy Access Token", "desc": "Optional bearer token for private ntfy topics.", "isRequired": False, "defaultValue": ""},
@@ -422,6 +423,11 @@ class SensorPushController(Node):
     ) -> None:
         age_hours = (now_utc - last_seen_utc).total_seconds() / 3600.0
         alert_key = sensor_id
+        ignored_targets = self._runtime_config.sensor_ntfy_ignore_list or set()
+        ignore_ntfy = (
+            sensor_name.strip().lower() in ignored_targets
+            or sensor_id.strip().lower() in ignored_targets
+        )
 
         if offline and alert_key not in self._sensor_offline_alerted:
             self._sensor_offline_alerted.add(alert_key)
@@ -433,20 +439,21 @@ class SensorPushController(Node):
                 age_hours,
                 self._runtime_config.sensor_offline_hours,
             )
-            self._notify_ntfy(
-                title="Sensor offline",
-                message=(
-                    f"Sensor '{sensor_name}' ({sensor_id}) is offline after {age_hours:.1f}h "
-                    f"(threshold {self._runtime_config.sensor_offline_hours:.1f}h)."
-                ),
-                tags="warning,sensorpush",
-            )
+            if not ignore_ntfy:
+                self._notify_ntfy(
+                    title="Sensor offline",
+                    message=(
+                        f"Sensor '{sensor_name}' ({sensor_id}) is offline after {age_hours:.1f}h "
+                        f"(threshold {self._runtime_config.sensor_offline_hours:.1f}h)."
+                    ),
+                    tags="warning,sensorpush",
+                )
             return
 
         if not offline and alert_key in self._sensor_offline_alerted:
             self._sensor_offline_alerted.remove(alert_key)
             LOGGER.info("Sensor recovered from offline state: %s (%s)", sensor_name, sensor_id)
-            if self._runtime_config.sensor_offline_notify_recovery:
+            if self._runtime_config.sensor_offline_notify_recovery and not ignore_ntfy:
                 self._notify_ntfy(
                     title="Sensor online",
                     message=f"Sensor '{sensor_name}' ({sensor_id}) is reporting again.",
@@ -682,6 +689,7 @@ class SensorPushController(Node):
             "fetch_limit",
             "sensor_offline_hours",
             "sensor_offline_notify_recovery",
+            "sensor_ntfy_ignore_list",
             "ntfy_topic",
             "ntfy_server",
             "ntfy_token",
