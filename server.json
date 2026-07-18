@@ -81,7 +81,7 @@
       "version": "2026.7.50"
     }
   ],
-  "profile_version": "10",
+  "profile_version": "11",
   "description": "PG3 for SensorPush cloud API with configurable short/long poll update mode.",
   "id": "sensorpush"
 }

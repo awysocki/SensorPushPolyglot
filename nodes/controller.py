@@ -157,12 +157,37 @@ class SensorPushController(Node):
         if not text:
             return None
 
-        truthy = {"1", "true", "yes", "y", "on", "online", "connected", "up", "available"}
-        falsy = {"0", "false", "no", "n", "off", "offline", "disconnected", "down", "unavailable"}
+        normalized = text.replace("_", " ").replace("-", " ")
 
-        if text in truthy:
+        truthy = {
+            "1",
+            "true",
+            "yes",
+            "y",
+            "on",
+            "online",
+            "connected",
+            "up",
+            "available",
+            "paired",
+        }
+        falsy = {
+            "0",
+            "false",
+            "no",
+            "n",
+            "off",
+            "offline",
+            "disconnected",
+            "down",
+            "unavailable",
+            "not paired",
+            "unpaired",
+        }
+
+        if normalized in truthy:
             return True
-        if text in falsy:
+        if normalized in falsy:
             return False
         return None
 
@@ -211,16 +236,34 @@ class SensorPushController(Node):
         if not isinstance(gateway_data, dict):
             return True
 
-        for key in (
-            "PAIRED",
-            "paired",
-            "isPaired",
-            "is_paired",
-        ):
-            if key in gateway_data:
-                parsed = self._coerce_bool(gateway_data.get(key))
-                if parsed is not None:
-                    return parsed
+        # Some API payloads expose pairing as paired/isPaired, while others
+        # use inverse flags like notPaired/unpaired.
+        def normalize_key(raw_key: Any) -> str:
+            return "".join(ch for ch in str(raw_key).strip().lower() if ch.isalnum())
+
+        pending: list[Any] = [gateway_data]
+        while pending:
+            current = pending.pop(0)
+            if isinstance(current, dict):
+                for key, value in current.items():
+                    normalized_key = normalize_key(key)
+
+                    if normalized_key in ("notpaired", "isnotpaired", "unpaired", "isunpaired"):
+                        parsed = self._coerce_bool(value)
+                        if parsed is not None:
+                            return not parsed
+
+                    if normalized_key in ("paired", "ispaired"):
+                        parsed = self._coerce_bool(value)
+                        if parsed is not None:
+                            return parsed
+
+                    if isinstance(value, (dict, list)):
+                        pending.append(value)
+            elif isinstance(current, list):
+                for item in current:
+                    if isinstance(item, (dict, list)):
+                        pending.append(item)
 
         # Default to paired when the API omits this field.
         return True
@@ -655,7 +698,7 @@ class SensorPushController(Node):
             online = self._extract_gateway_online(gateway_data)
             paired = self._extract_gateway_paired(gateway_data)
             node.set_status(online=online, paired=paired)
-            self._handle_gateway_state(gateway_id_text, gateway_name, online)
+            self._handle_gateway_state(gateway_id_text, gateway_name, online and paired)
 
         existing_gateway_addresses = {
             address
