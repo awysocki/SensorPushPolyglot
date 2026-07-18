@@ -254,6 +254,10 @@ class SensorPushController(Node):
                             return not parsed
 
                     if normalized_key in ("paired", "ispaired"):
+                        if value is None:
+                            # SensorPush can return paired=null for gateways that are
+                            # visible in cloud but not paired to this account.
+                            return False
                         parsed = self._coerce_bool(value)
                         if parsed is not None:
                             return parsed
