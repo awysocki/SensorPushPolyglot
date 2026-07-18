@@ -2,11 +2,37 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
+import time
 
 import udi_interface
 from nodes.controller import SensorPushController
 
 LOGGER = udi_interface.LOGGER
+
+
+class _ConsecutiveDuplicateFilter(logging.Filter):
+    def __init__(self, window_seconds: float = 0.5) -> None:
+        super().__init__()
+        self._window_seconds = window_seconds
+        self._lock = threading.Lock()
+        self._last_key: tuple[str, str, str] | None = None
+        self._last_time = 0.0
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+
+        now = time.monotonic()
+        key = (record.name, record.levelname, message)
+        with self._lock:
+            if self._last_key == key and (now - self._last_time) <= self._window_seconds:
+                return False
+            self._last_key = key
+            self._last_time = now
+        return True
 
 
 class _SensitiveDataFilter(logging.Filter):
@@ -74,6 +100,7 @@ def _set_mqtt_logger_silent() -> None:
 
 def _install_sensitive_log_filter() -> None:
     sensitive_filter = _SensitiveDataFilter()
+    duplicate_filter = _ConsecutiveDuplicateFilter()
     targets = [
         logging.getLogger(),
         logging.getLogger("udi_interface"),
@@ -83,8 +110,10 @@ def _install_sensitive_log_filter() -> None:
 
     for logger in targets:
         logger.addFilter(sensitive_filter)
+        logger.addFilter(duplicate_filter)
         for handler in logger.handlers:
             handler.addFilter(sensitive_filter)
+            handler.addFilter(duplicate_filter)
 
 
 def main() -> None:

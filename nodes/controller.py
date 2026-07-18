@@ -525,8 +525,14 @@ class SensorPushController(Node):
                     tags="white_check_mark,sensorpush",
                 )
 
-    def _handle_gateway_state(self, gateway_id: str, gateway_name: str, online: bool) -> None:
+    def _handle_gateway_state(self, gateway_id: str, gateway_name: str, online: bool, paired: bool) -> None:
         alert_key = gateway_id
+
+        if not paired:
+            if alert_key in self._gateway_offline_alerted:
+                self._gateway_offline_alerted.remove(alert_key)
+            LOGGER.info("Gateway is visible but not paired: %s (%s)", gateway_name, gateway_id)
+            return
 
         if not online and alert_key not in self._gateway_offline_alerted:
             self._gateway_offline_alerted.add(alert_key)
@@ -711,7 +717,7 @@ class SensorPushController(Node):
                     if any(token in key_norm for token in ("pair", "online", "status", "state", "connect", "reach")):
                         gateway_debug_fields[key_text] = value
 
-            LOGGER.warning(
+            LOGGER.debug(
                 "Gateway status diag: name=%s id=%s paired=%s online=%s st=%s raw_fields=%s",
                 gateway_name,
                 gateway_id_text,
@@ -722,7 +728,7 @@ class SensorPushController(Node):
             )
 
             node.set_status(online=online, paired=paired)
-            self._handle_gateway_state(gateway_id_text, gateway_name, online and paired)
+            self._handle_gateway_state(gateway_id_text, gateway_name, online=online, paired=paired)
 
         existing_gateway_addresses = {
             address
