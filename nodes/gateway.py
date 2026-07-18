@@ -17,6 +17,8 @@ class SensorPushGatewayNode(Node):
     def __init__(self, polyglot: Any, address: str, name: str, primary: str) -> None:
         super().__init__(polyglot, primary, address, name)
 
-    def set_online(self, online: bool) -> None:
-        self.setDriver("ST", 1 if online else 0)
+    def set_status(self, online: bool, paired: bool) -> None:
+        # ST values: 0=Disconnected, 1=Connected, 2=Not Paired.
+        state = 2 if not paired else (1 if online else 0)
+        self.setDriver("ST", state)
         self.reportDrivers()

@@ -34,12 +34,14 @@ Child node metrics currently include:
 Each SensorPush gateway is represented as a dedicated PG3 child node under the controller.
 
 - New gateway appears in SensorPush: a new gateway child node is created automatically.
-- Existing gateway remains: gateway online/offline status is updated.
+- Existing gateway remains: gateway status is updated.
 - Gateway removed from SensorPush: corresponding gateway child node is deleted automatically.
 
 Gateway node metrics currently include:
 
-- Online/Offline status
+- Status (Connected, Disconnected, Not Paired)
+
+`Not Paired` is set when the gateway payload includes `PAIRED=false`.
 
 If `ntfy_topic` is set, the controller sends an ntfy alert when a gateway is first detected offline, and optionally sends a recovery message when it comes back online using the existing `sensor_offline_notify_recovery` setting.
 

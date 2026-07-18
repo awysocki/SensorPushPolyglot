@@ -207,6 +207,24 @@ class SensorPushController(Node):
 
         return True
 
+    def _extract_gateway_paired(self, gateway_data: Any) -> bool:
+        if not isinstance(gateway_data, dict):
+            return True
+
+        for key in (
+            "PAIRED",
+            "paired",
+            "isPaired",
+            "is_paired",
+        ):
+            if key in gateway_data:
+                parsed = self._coerce_bool(gateway_data.get(key))
+                if parsed is not None:
+                    return parsed
+
+        # Default to paired when the API omits this field.
+        return True
+
     @classmethod
     def _sensor_type_index(cls, sensor_type: str | None) -> int:
         normalized = str(sensor_type or "").strip().upper()
@@ -635,7 +653,8 @@ class SensorPushController(Node):
                 LOGGER.info("Created child gateway node: %s (%s)", gateway_name, address)
 
             online = self._extract_gateway_online(gateway_data)
-            node.set_online(online)
+            paired = self._extract_gateway_paired(gateway_data)
+            node.set_status(online=online, paired=paired)
             self._handle_gateway_state(gateway_id_text, gateway_name, online)
 
         existing_gateway_addresses = {

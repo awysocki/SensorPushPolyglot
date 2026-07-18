@@ -22,12 +22,13 @@ ST-sensor-GV5-NAME = Signal (dBm)
 ST-sensor-GV6-NAME = Barometric
 ST-sensor-GV7-NAME = Heat Index (F)
 ST-sensor-GV8-NAME = Device Type
-ST-sp_gateway-ST-NAME = Gateway Online
+ST-sp_gateway-ST-NAME = Gateway Status
 
 CMD-controller-QUERY-NAME = Query
 
 onoff-0 = Disconnected
 onoff-1 = Connected
+onoff-2 = Not Paired
 
 sensor_type_index-0 = Unknown
 sensor_type_index-1 = HT1
